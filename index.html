@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html>
+  <head>
+        
+    <meta charset="utf-8" />
+        
+    <meta name="viewport" content="width=device-width" />
+        
+    <title>Список пользователей</title>
+        
+    <link
+      href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+
+    <style>
+      .modal_shell {
+        width: 100vw;
+        height: 100vh;
+        position: fixed;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        top: 0;
+        left: 0;
+        display: flex;
+      }
+
+      .modal_overlay {
+        width: 100vw;
+        height: 100vh;
+        background: rgba(0, 0, 0, 0.5);
+        position: absolute;
+        z-index: 2;
+      }
+
+      .modals {
+        width: 30vw;
+        height: 50vh;
+        border-radius: 20px;
+        background-color: #ccc;
+        padding: 30px;
+        position: relative;
+        top: 0;
+        left: 0;
+        z-index: 5;
+      }
+
+      .hide {
+        display: none !important;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h2>Список пользователей</h2>
+      <form name="userForm" id="userForm">
+        <div class="form-group">
+           <label for="name">Имя:</label>
+          <input class="form-control" name="name" id="userName" />
+        </div>
+        <div class="form-group">
+            <label for="age">Возраст:</label>
+          <input class="form-control" name="age" id="userAge" />
+        </div>
+        <div class="panel-body">
+          <button type="submit" class="btn btn-sm btn-primary">
+            Сохранить
+          </button>
+          <a id="reset" class="btn btn-sm btn-primary">Сбросить</a>
+        </div>
+      </form>
+      <table class="table table-condensed table-striped table-bordered">
+        <thead>
+          <tr>
+            <th>Id</th>
+            <th>Имя</th>
+            <th>возраст</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+
+    <div class="modal_shell hide" id="modal_shell">
+      <div class="modal_overlay" id="modal_overlay"></div>
+      <div class="modals">
+        <form id="change-form">
+          <input
+            type="text"
+            id="change-name"
+            name="changeName"
+            placeholder="Type your name"
+          />
+          <hr />
+          <input
+            type="text"
+            id="change-age"
+            name="changeAge"
+            placeholder="Type your age"
+          />
+          <hr />
+          <button>Press</button>
+        </form>
+      </div>
+    </div>
+
+    <script>
+      const createUserEl = document.getElementById("userForm");
+      const userAgeEl = document.getElementById("userAge");
+      const userNameEl = document.getElementById("userName");
+      const resetEl = document.getElementById("reset");
+      const userChaneEl = document.getElementById("change-form");
+      const changeUserNameEl = document.getElementById("change-name");
+      const changeUserAgeEl = document.getElementById("change-age");
+      const modalShellEl = document.getElementById("modal_shell");
+      const modalOverlayEl = document.getElementById("modal_overlay");
+
+      const tableBodyEl = document.querySelector("tbody");
+
+      const baseUrl = "/api/users";
+
+      let userId = null;
+      const getUsers = async () => {
+        const response = await fetch(baseUrl);
+        const data = await response.json();
+        console.log(data);
+        let template = "";
+
+        for (let key in data) {
+          template += row(data[key]);
+        }
+
+        tableBodyEl.innerHTML = template;
+      };
+
+      const resetForm = (form) => form.reset();
+      const createUser = async (name, age) => {
+        const options = {
+          method: "POST",
+          headers: {
+            Accept: "application/json",
+            "Content-type": "application/json",
+          },
+          body: JSON.stringify({ name, age }),
+        };
+        await getUsers();
+        await fetch(baseUrl, options);
+      };
+
+      editUser = async (name, age) => {
+        const options = {
+          method: "PUT",
+          headers: {
+            Accept: "application/json",
+            "Content-type": "application/json",
+          },
+          body: JSON.stringify({ name, age, id: userId }),
+        };
+        await fetch(baseUrl, options);
+        await getUsers();
+      };
+
+      const deleteButton = (id) => {
+        const deleteAll = document
+          .getElementById(`delete${id}`)
+          .parentElement.parentElement.remove();
+        fetch(`api/users/${id}`, { method: "DELETE" });
+      };
+
+      const onCreateSubmit = (event) => {
+        event.preventDefault();
+        const username = userNameEl.value;
+        const userage = userAgeEl.value;
+
+        createUser(username, userage).then(() => resetForm(createUserEl));
+      };
+
+      const onChangeSubmit = (event) => {
+        event.preventDefault();
+        const username = userNameEl.value;
+        const userage = userAgeEl.value;
+
+        editUser(userage, username).then(() => {
+          resetForm(userChangeEl);
+          modalShellEl.classList.add("hide");
+        });
+      };
+
+      const onEditClick = (event) => {
+        const { target } = event;
+        if (target.dataset.action === "edit") {
+          modalShellEl.classList.remove("hide");
+          userId = target.parentElement.id;
+        }
+      };
+
+      const onOverlayClick = () => {
+        modalShellEl.classList.add("hide");
+        userId = null;
+      };
+      getUsers();
+
+      createUserEl.addEventListener("submit", onCreateSubmit);
+      tableBodyEl.addEventListener("click", onEditClick);
+      modalOverlayEl.addEventListener("click", onOverlayClick);
+      userChangeEl.addEventListener("submit", onChangeSubmit);
+      resetEl.addEventListener("click", resetForm);
+
+      function row(user) {
+        const renderUser = `
+          <tr>
+            <td>${user.id}</td>
+            <td>${user.name}</td>
+            <td>${user.age}</td>
+            <td id="${user.id}">
+              <a data-action ="edit" href="javascript:void(0)">Изменить</a>
+              <a id ="delete${user.id}" name='e' onClick='deleteButton (${user.id})' href="javascript:void(0)">Удалить</a>
+            </td>
+          </tr>
+        `;
+        return renderUser;
+      }
+      getUsers();
+    </script>
+  </body>
+</html>
